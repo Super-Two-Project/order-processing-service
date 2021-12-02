@@ -1,16 +1,15 @@
 package io.turntabl.super2.orderProcessingService.order;
 
+import io.turntabl.super2.orderProcessingService.enums.Side;
+import io.turntabl.super2.orderProcessingService.market_data.MarketData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.Disposable;
-import reactor.core.publisher.Mono;
 
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -30,8 +29,71 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
 
+    Map<String, Map<String, List<MarketData>>> md = new HashMap<>();
+
     public OrderServiceImpl(OrderRepository orderRepository) {
         this.orderRepository = orderRepository;
+    }
+
+    @Override
+    public Map.Entry<String, Double> getPrice(String ticker, Side side) {
+
+        Map<String, Double> tempContainer = new HashMap<>();
+        md.put(
+                "exchange1", Map.of(
+                        "MSFT", List.of(
+                                new MarketData(1.0, 3, 16.0, 11.0, 11, "MSFT", 1),
+                                new MarketData(2.0, 1, 1.0, 10.0, 13, "MSFT", 1),
+                                new MarketData(3.0, 2, 19.0, 14.1, 1, "MSFT", 1)
+                        ),
+                        "AAPL", List.of(
+                                new MarketData(1.0, 3, 16.0, 11.0, 11, "AAPL", 1),
+                                new MarketData(2.0, 1, 1.0, 10.0, 13, "AAPL", 1),
+                                new MarketData(3.0, 2, 19.9, 14.0, 1, "AAPL", 1)
+                        )
+                )
+        );
+
+
+
+        md.put(
+                "exchange2", Map.of(
+                        "AAPL", List.of(
+                                new MarketData(1.0, 3, 16.0, 11.0, 11, "AAPL", 1),
+                                new MarketData(2.0, 1, 1.0, 10.0, 13, "AAPL", 1),
+                                new MarketData(3.0, 2, 19.0, 14.0, 1, "AAPL", 1)
+                        ),
+                        "MSFT", List.of(
+                                new MarketData(1.0, 3, 16.0, 11.0, 11, "MSFT", 1),
+                                new MarketData(2.0, 1, 1.0, 10.0, 13, "MSFT", 1),
+                                new MarketData(3.0, 2, 19.1, 14.0, 1, "MSFT", 1)
+                        )
+                )
+        );
+
+        // Get keys of datastore
+        var keys = md.keySet();
+
+        // Loop through keys
+        for (String key: keys) {
+            Double potentialBestPrice;
+            if (side.equals(Side.SELL)) {
+                potentialBestPrice = md.get(key).get(ticker).stream()
+                        .map(MarketData::getBidPrice)
+                        .max(Comparator.comparingDouble(p -> p))
+                        .orElseThrow(RuntimeException::new);
+            } else {
+                potentialBestPrice = md.get(key).get(ticker).stream()
+                        .map(MarketData::getAskPrice)
+                        .max(Comparator.comparingDouble(p -> p))
+                        .orElseThrow(RuntimeException::new);
+            }
+            tempContainer.put(key, potentialBestPrice);
+        }
+
+        return tempContainer.entrySet().stream()
+                .max(Comparator.comparingDouble(Map.Entry::getValue))
+                .orElseThrow(RuntimeException::new);
     }
 
     @Override
@@ -54,20 +116,46 @@ public class OrderServiceImpl implements OrderService {
 
         Order order = new Order(orderRequest);
 
+        md.put(
+                "exchange1", Map.of(
+                        "MSFT", List.of(
+                                new MarketData(1.0, 3, 16.0, 11.0, 11, "MSFT", 1),
+                                new MarketData(2.0, 1, 1.0, 10.0, 13, "MSFT", 1),
+                                new MarketData(3.0, 2, 19.0, 14.0, 1, "MSFT", 1)
+                        ),
+                        "AAPL", List.of(
+                                new MarketData(1.0, 3, 16.0, 11.0, 11, "AAPL", 1),
+                                new MarketData(2.0, 1, 1.0, 10.0, 13, "AAPL", 1),
+                                new MarketData(3.0, 2, 19.0, 14.0, 1, "AAPL", 1)
+                        )
+                )
+        );
+
+        md.put(
+                "exchange2", Map.of(
+                        "AAPL", List.of(
+                                new MarketData(1.0, 3, 16.0, 11.0, 11, "AAPL", 1),
+                                new MarketData(2.0, 1, 1.0, 10.0, 13, "AAPL", 1),
+                                new MarketData(3.0, 2, 19.0, 14.0, 1, "AAPL", 1)
+                        ),
+                        "MSFT", List.of(
+                                new MarketData(1.0, 3, 16.0, 11.0, 11, "MSFT", 1),
+                                new MarketData(2.0, 1, 1.0, 10.0, 13, "MSFT", 1),
+                                new MarketData(3.0, 2, 19.0, 14.0, 1, "MSFT", 1)
+                        )
+                )
+        );
+
+
+        if (order.getSide().equals(Side.BUY.name())) {
+            // Check selling price
+
+            // Check if order quantity exceeds allowed limit
+
+            // Check
+        }
 
         // Send order to exchange
-//        ResponseEntity<String> response =webClient
-//                .post()
-//                .uri(this.exchange + "/" + this.API_KEY + "/order")
-//                .body(Mono.just(order), Order.class)
-//                .retrieve()
-//                .toEntity(String.class)
-//                .block();
-
-//        if (!response.getStatusCode().is2xxSuccessful()){
-//            System.out.println(response.getBody());
-//        }
-
         return restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", order, String.class);
 
 //        OrderDTO returnedOrderDTO = this.orderRepository.save(orderDTO);

@@ -4,10 +4,10 @@ import io.turntabl.super2.orderProcessingService.enums.Side;
 
 public class Order {
 
-    private final String product;
-    private final Double quantity;
-    private final Double price;
-    private final String side;
+    private String product;
+    private Double quantity;
+    private Double price;
+    private String side;
 
     public Order(OrderRequest orderRequest) {
         this.quantity = orderRequest.getQuantity();
@@ -16,19 +16,35 @@ public class Order {
         this.product = "MSFT";
     }
 
+    public String getProduct() {
+        return product;
+    }
+
+    public void setProduct(String product) {
+        this.product = product;
+    }
+
     public Double getQuantity() {
-        return this.quantity;
+        return quantity;
+    }
+
+    public void setQuantity(Double quantity) {
+        this.quantity = quantity;
     }
 
     public Double getPrice() {
-        return this.price;
+        return price;
+    }
+
+    public void setPrice(Double price) {
+        this.price = price;
     }
 
     public String getSide() {
-        return this.side;
+        return side;
     }
 
-    public String getProduct() {
-        return this.product;
+    public void setSide(String side) {
+        this.side = side;
     }
 }

@@ -1,11 +1,13 @@
 package io.turntabl.super2.orderProcessingService.order;
 
+import io.turntabl.super2.orderProcessingService.enums.Side;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping(path = "/api/v1")
@@ -13,6 +15,11 @@ public class OrderController {
 
     @Autowired
     OrderService orderService;
+
+    @GetMapping("/orders/best-price")
+    public ResponseEntity<Map.Entry<String, Double>> getBestPrice(@RequestParam String ticker, @RequestParam Side side) {
+        return new ResponseEntity<>(this.orderService.getPrice(ticker, side), HttpStatus.OK);
+    }
 
     @GetMapping("/orders")
     public List<OrderResponse> getOrders() {

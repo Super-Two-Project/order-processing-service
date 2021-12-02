@@ -9,10 +9,10 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class MarketData {
 
-    private int lastTradedPrice;
+    private Double lastTradedPrice;
     private int sellLimit;
-    private int bidLimit;
-    private int askPrice;
+    private Double bidPrice;
+    private Double askPrice;
     private int buyLimit;
     private String ticker;
     private int maxPriceShift;
