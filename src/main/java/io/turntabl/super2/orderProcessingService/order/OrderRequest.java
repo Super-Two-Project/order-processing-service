@@ -4,20 +4,24 @@ import io.turntabl.super2.orderProcessingService.enums.Side;
 
 public class OrderRequest {
 
-    private final int productID;
+    private final String product;
     private final Double quantity;
     private final Double price;
     private final Side side;
     private final int accountID;
     private final int portfolioID;
+    private final String exchange;
+    private final int buyLimit;
 
-    public OrderRequest(Double quantity, Double price, Side side, int accountID, int productID, int portfolioID) {
+    public OrderRequest(Double quantity, Double price, Side side, int accountID, String ticker, int portfolioID, String exchange, int buyLimit) {
         this.quantity = quantity;
         this.price = price;
         this.side = side;
         this.accountID = accountID;
-        this.productID = productID;
+        this.product = ticker;
         this.portfolioID = portfolioID;
+        this.exchange = exchange;
+        this.buyLimit = buyLimit;
     }
 
     public Double getQuantity() {
@@ -36,11 +40,19 @@ public class OrderRequest {
         return this.accountID;
     }
 
-    public int getProductID() {
-        return productID;
+    public String getProduct() {
+        return product;
     }
 
     public int getPortfolioID() {
         return portfolioID;
+    }
+
+    public String getExchange() {
+        return this.exchange;
+    }
+
+    public int getBuyLimit() {
+        return this.buyLimit;
     }
 }

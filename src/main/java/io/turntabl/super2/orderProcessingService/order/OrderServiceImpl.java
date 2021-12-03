@@ -2,6 +2,7 @@ package io.turntabl.super2.orderProcessingService.order;
 
 import io.turntabl.super2.orderProcessingService.enums.Side;
 import io.turntabl.super2.orderProcessingService.market_data.MarketData;
+import io.turntabl.super2.orderProcessingService.market_data.MarketQuote;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -29,71 +30,15 @@ public class OrderServiceImpl implements OrderService {
 
     private final OrderRepository orderRepository;
 
-    Map<String, Map<String, List<MarketData>>> md = new HashMap<>();
+    Map<String, List<MarketData>> md = new HashMap<>();
 
     public OrderServiceImpl(OrderRepository orderRepository) {
         this.orderRepository = orderRepository;
     }
 
     @Override
-    public Map.Entry<String, Double> getPrice(String ticker, Side side) {
-
-        Map<String, Double> tempContainer = new HashMap<>();
-        md.put(
-                "exchange1", Map.of(
-                        "MSFT", List.of(
-                                new MarketData(1.0, 3, 16.0, 11.0, 11, "MSFT", 1),
-                                new MarketData(2.0, 1, 1.0, 10.0, 13, "MSFT", 1),
-                                new MarketData(3.0, 2, 19.0, 14.1, 1, "MSFT", 1)
-                        ),
-                        "AAPL", List.of(
-                                new MarketData(1.0, 3, 16.0, 11.0, 11, "AAPL", 1),
-                                new MarketData(2.0, 1, 1.0, 10.0, 13, "AAPL", 1),
-                                new MarketData(3.0, 2, 19.9, 14.0, 1, "AAPL", 1)
-                        )
-                )
-        );
-
-
-
-        md.put(
-                "exchange2", Map.of(
-                        "AAPL", List.of(
-                                new MarketData(1.0, 3, 16.0, 11.0, 11, "AAPL", 1),
-                                new MarketData(2.0, 1, 1.0, 10.0, 13, "AAPL", 1),
-                                new MarketData(3.0, 2, 19.0, 14.0, 1, "AAPL", 1)
-                        ),
-                        "MSFT", List.of(
-                                new MarketData(1.0, 3, 16.0, 11.0, 11, "MSFT", 1),
-                                new MarketData(2.0, 1, 1.0, 10.0, 13, "MSFT", 1),
-                                new MarketData(3.0, 2, 19.1, 14.0, 1, "MSFT", 1)
-                        )
-                )
-        );
-
-        // Get keys of datastore
-        var keys = md.keySet();
-
-        // Loop through keys
-        for (String key: keys) {
-            Double potentialBestPrice;
-            if (side.equals(Side.SELL)) {
-                potentialBestPrice = md.get(key).get(ticker).stream()
-                        .map(MarketData::getBidPrice)
-                        .max(Comparator.comparingDouble(p -> p))
-                        .orElseThrow(RuntimeException::new);
-            } else {
-                potentialBestPrice = md.get(key).get(ticker).stream()
-                        .map(MarketData::getAskPrice)
-                        .max(Comparator.comparingDouble(p -> p))
-                        .orElseThrow(RuntimeException::new);
-            }
-            tempContainer.put(key, potentialBestPrice);
-        }
-
-        return tempContainer.entrySet().stream()
-                .max(Comparator.comparingDouble(Map.Entry::getValue))
-                .orElseThrow(RuntimeException::new);
+    public MarketQuote getPrice(String ticker, Side side) {
+        return this.getBestPrice(side, ticker);
     }
 
     @Override
@@ -106,60 +51,71 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public ResponseEntity<?> createOrder(OrderRequest orderRequest) {
         // Create empty order object
-        OrderDTO orderDTO = new OrderDTO();
-
-        // Set attributes on order object
-        orderDTO.setQuantity(orderRequest.getQuantity());
-        orderDTO.setPrice(orderRequest.getPrice());
-        orderDTO.setSide(orderRequest.getSide());
-        orderDTO.setAccountID(orderRequest.getAccountID());
-
         Order order = new Order(orderRequest);
 
-        md.put(
-                "exchange1", Map.of(
-                        "MSFT", List.of(
-                                new MarketData(1.0, 3, 16.0, 11.0, 11, "MSFT", 1),
-                                new MarketData(2.0, 1, 1.0, 10.0, 13, "MSFT", 1),
-                                new MarketData(3.0, 2, 19.0, 14.0, 1, "MSFT", 1)
-                        ),
-                        "AAPL", List.of(
-                                new MarketData(1.0, 3, 16.0, 11.0, 11, "AAPL", 1),
-                                new MarketData(2.0, 1, 1.0, 10.0, 13, "AAPL", 1),
-                                new MarketData(3.0, 2, 19.0, 14.0, 1, "AAPL", 1)
-                        )
-                )
-        );
+        // Check for alternative quote
+        var alternativeQuote = this.getBestPrice(order.getSide(), order.getProduct());
 
-        md.put(
-                "exchange2", Map.of(
-                        "AAPL", List.of(
-                                new MarketData(1.0, 3, 16.0, 11.0, 11, "AAPL", 1),
-                                new MarketData(2.0, 1, 1.0, 10.0, 13, "AAPL", 1),
-                                new MarketData(3.0, 2, 19.0, 14.0, 1, "AAPL", 1)
-                        ),
-                        "MSFT", List.of(
-                                new MarketData(1.0, 3, 16.0, 11.0, 11, "MSFT", 1),
-                                new MarketData(2.0, 1, 1.0, 10.0, 13, "MSFT", 1),
-                                new MarketData(3.0, 2, 19.0, 14.0, 1, "MSFT", 1)
-                        )
-                )
-        );
+        // Create an alternativeOrder
+        Order alternativeOrder = new Order();
+        alternativeOrder.setSide(order.getSide());
+        alternativeOrder.setProduct(order.getProduct());
+        alternativeOrder.setPrice(alternativeQuote.getPrice());
+        alternativeOrder.setQuantity(order.getQuantity());
 
+        // Response object
+        ResponseEntity<String> response = null;
 
-        if (order.getSide().equals(Side.BUY.name())) {
-            // Check selling price
-
-            // Check if order quantity exceeds allowed limit
-
-            // Check
+        if (order.getSide().equals(Side.SELL)) {
+            System.out.println("selling...");
+            if (alternativeOrder.getPrice() > order.getPrice()) {
+                System.out.println("using alt order...");
+                if (alternativeQuote.getExchange().equals("exchange1")) {
+                    System.out.println("ex1");
+                    response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
+                }
+                else if (alternativeQuote.getExchange().equals("exchange2")) {
+                    System.out.println("ex2");
+                    response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
+                }
+            } else {
+                System.out.println("using original order...");
+                if (alternativeQuote.getExchange().equals("exchange1")) {
+                    System.out.println("ex1");
+                    response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", order, String.class);
+                }
+                else if (alternativeQuote.getExchange().equals("exchange2")) {
+                    System.out.println("ex2");
+                    response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", order, String.class);
+                }
+            }
+        } else {
+            System.out.println("buying...");
+            if (alternativeOrder.getPrice() < order.getPrice()) {
+                System.out.println("using alt order...");
+                if (alternativeQuote.getExchange().equals("exchange1")) {
+                    System.out.println("ex1");
+                    System.out.println(alternativeOrder);
+                    response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
+                }
+                else if (alternativeQuote.getExchange().equals("exchange2")) {
+                    System.out.println("ex2");
+                    response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
+                }
+            } else {
+                System.out.println("using original order...");
+                if (alternativeQuote.getExchange().equals("exchange1")) {
+                    System.out.println("ex1");
+                    response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", order, String.class);
+                }
+                else if (alternativeQuote.getExchange().equals("exchange2")) {
+                    System.out.println("ex2");
+                    response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", order, String.class);
+                }
+            }
         }
 
-        // Send order to exchange
-        return restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", order, String.class);
-
-//        OrderDTO returnedOrderDTO = this.orderRepository.save(orderDTO);
-//        return new ResponseEntity<>(new OrderResponse(returnedOrderDTO), HttpStatus.CREATED);
+        return response;
     }
 
     @Override
@@ -190,5 +146,65 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public void deleteOrder(Long id) {
         this.orderRepository.deleteById(id);
+    }
+
+    public MarketQuote getBestPrice(Side side, String ticker) {
+        List<MarketQuote> tempContainer = new ArrayList<>();
+
+        // Get market data
+        this.getMarketData();
+
+        // Get keys of datastore
+        var keys = md.keySet();
+
+        // Loop through keys
+        for (String key: keys) {
+            MarketData potentialBestOffer;
+            if (side.equals(Side.SELL)) {
+                potentialBestOffer = md.get(key).stream()
+                        .filter(marketData -> marketData.getTicker().equals(ticker))
+                        .findFirst()
+                        .orElseThrow(RuntimeException::new);
+
+                tempContainer.add(new MarketQuote(key, potentialBestOffer.getBidPrice(), potentialBestOffer.getSellLimit())
+                );
+            } else {
+                potentialBestOffer = md.get(key).stream()
+                        .filter(marketData -> marketData.getTicker().equals(ticker))
+                        .findFirst()
+                        .orElseThrow(RuntimeException::new);
+
+                tempContainer.add(new MarketQuote(key, potentialBestOffer.getAskPrice(), potentialBestOffer.getBuyLimit())
+                );
+            }
+        }
+
+        if (side.equals(Side.SELL)) {
+            return tempContainer.stream()
+                    .max(Comparator.comparingDouble(MarketQuote::getPrice))
+                    .orElseThrow(RuntimeException::new);
+        } else {
+            return tempContainer.stream()
+                    .min(Comparator.comparingDouble(MarketQuote::getPrice))
+                    .orElseThrow(RuntimeException::new);
+        }
+    }
+
+    public void getMarketData() {
+        this.md.put(
+            "exchange1", List.of(
+                new MarketData(1.0, 3, 16.0, 11.0, 11, "MSFT", 1),
+                new MarketData(2.0, 1, 1.0, 10.0, 13, "AAPL", 1),
+                new MarketData(3.0, 2, 19.0, 14.1, 1, "TSLA", 1)
+            )
+        );
+
+        this.md.put(
+            "exchange2", List.of(
+                new MarketData(1.0, 3, 16.5, 41.0, 11, "MSFT", 1),
+                new MarketData(2.0, 1, 1.0, 10.0, 13, "TSLA", 1),
+                new MarketData(3.0, 2, 19.1, 14.0, 1, "AAPL", 1)
+            )
+        );
     }
 }

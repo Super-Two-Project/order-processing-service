@@ -1,14 +1,14 @@
 package io.turntabl.super2.orderProcessingService.order;
 
 import io.turntabl.super2.orderProcessingService.enums.Side;
+import io.turntabl.super2.orderProcessingService.market_data.MarketQuote;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;
-import java.util.Map;
 
 public interface OrderService {
 
-    public Map.Entry<String, Double> getPrice(String ticker, Side side);
+    public MarketQuote getPrice(String ticker, Side side);
     public List<OrderResponse> getOrders();
     public ResponseEntity<?> createOrder(OrderRequest orderRequest);
     public ResponseEntity<OrderResponse> getOrder(Long id);
