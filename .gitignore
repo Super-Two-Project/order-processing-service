@@ -5,6 +5,11 @@ HELP.md
 mvnw
 mvnw.cmd
 *.iml
+.vscode/
+.settings/
+.classpath
+.factorypath
+.project
 # Compiled class file
 *.class
 
