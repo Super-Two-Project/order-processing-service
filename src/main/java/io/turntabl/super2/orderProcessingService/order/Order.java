@@ -1,6 +1,5 @@
 package io.turntabl.super2.orderProcessingService.order;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import io.turntabl.super2.orderProcessingService.enums.Side;
 
 public class Order {
