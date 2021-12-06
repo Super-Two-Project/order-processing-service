@@ -3,6 +3,9 @@ package io.turntabl.super2.orderProcessingService.order;
 import io.turntabl.super2.orderProcessingService.enums.Side;
 import io.turntabl.super2.orderProcessingService.market_data.MarketData;
 import io.turntabl.super2.orderProcessingService.market_data.MarketQuote;
+import io.turntabl.super2.orderProcessingService.order.exceptions.InvalidOrderException;
+import io.turntabl.super2.orderProcessingService.order.exceptions.OrderNotFoundException;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -63,59 +66,57 @@ public class OrderServiceImpl implements OrderService {
         alternativeOrder.setPrice(alternativeQuote.getPrice());
         alternativeOrder.setQuantity(order.getQuantity());
 
-        // Response object
-        ResponseEntity<String> response = null;
+        // Check order and send to exchange
+        return this.sendOrderToExchange(orderRequest.getSide(), orderRequest, alternativeQuote, alternativeOrder, order);
 
-        if (order.getSide().equals(Side.SELL)) {
-            System.out.println("selling...");
-            if (alternativeOrder.getPrice() > order.getPrice()) {
-                System.out.println("using alt order...");
-                if (alternativeQuote.getExchange().equals("exchange1")) {
-                    System.out.println("ex1");
-                    response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
-                }
-                else if (alternativeQuote.getExchange().equals("exchange2")) {
-                    System.out.println("ex2");
-                    response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
-                }
-            } else {
-                System.out.println("using original order...");
-                if (alternativeQuote.getExchange().equals("exchange1")) {
-                    System.out.println("ex1");
-                    response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", order, String.class);
-                }
-                else if (alternativeQuote.getExchange().equals("exchange2")) {
-                    System.out.println("ex2");
-                    response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", order, String.class);
-                }
-            }
-        } else {
-            System.out.println("buying...");
-            if (alternativeOrder.getPrice() < order.getPrice()) {
-                System.out.println("using alt order...");
-                if (alternativeQuote.getExchange().equals("exchange1")) {
-                    System.out.println("ex1");
-                    System.out.println(alternativeOrder);
-                    response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
-                }
-                else if (alternativeQuote.getExchange().equals("exchange2")) {
-                    System.out.println("ex2");
-                    response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
-                }
-            } else {
-                System.out.println("using original order...");
-                if (alternativeQuote.getExchange().equals("exchange1")) {
-                    System.out.println("ex1");
-                    response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", order, String.class);
-                }
-                else if (alternativeQuote.getExchange().equals("exchange2")) {
-                    System.out.println("ex2");
-                    response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", order, String.class);
-                }
-            }
-        }
-
-        return response;
+        // if (order.getSide().equals(Side.SELL)) {
+        //     System.out.println("selling...");
+        //     if (alternativeOrder.getPrice() > order.getPrice()) {
+        //         System.out.println("using alt order...");
+        //         if (alternativeQuote.getExchange().equals("exchange1")) {
+        //             System.out.println("ex1");
+        //             response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
+        //         }
+        //         else if (alternativeQuote.getExchange().equals("exchange2")) {
+        //             System.out.println("ex2");
+        //             response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
+        //         }
+        //     } else {
+        //         System.out.println("using original order...");
+        //         if (alternativeQuote.getExchange().equals("exchange1")) {
+        //             System.out.println("ex1");
+        //             response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", order, String.class);
+        //         }
+        //         else if (alternativeQuote.getExchange().equals("exchange2")) {
+        //             System.out.println("ex2");
+        //             response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", order, String.class);
+        //         }
+        //     }
+        // } else {
+        //     System.out.println("buying...");
+        //     if (alternativeOrder.getPrice() < order.getPrice()) {
+        //         System.out.println("using alt order...");
+        //         if (alternativeQuote.getExchange().equals("exchange1")) {
+        //             System.out.println("ex1");
+        //             System.out.println(alternativeOrder);
+        //             response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
+        //         }
+        //         else if (alternativeQuote.getExchange().equals("exchange2")) {
+        //             System.out.println("ex2");
+        //             response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
+        //         }
+        //     } else {
+        //         System.out.println("using original order...");
+        //         if (alternativeQuote.getExchange().equals("exchange1")) {
+        //             System.out.println("ex1");
+        //             response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", order, String.class);
+        //         }
+        //         else if (alternativeQuote.getExchange().equals("exchange2")) {
+        //             System.out.println("ex2");
+        //             response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", order, String.class);
+        //         }
+        //     }
+        // }
     }
 
     @Override
@@ -190,20 +191,135 @@ public class OrderServiceImpl implements OrderService {
         }
     }
 
+    public ResponseEntity<String> sendOrderToExchange(Side side, OrderRequest orderRequest, MarketQuote alternativeQuote, Order alternativeOrder, Order order) {
+        ResponseEntity<String> response = null;
+        switch (side) {
+            case SELL:
+                if (alternativeOrder.getPrice() > order.getPrice()) {
+                    response = this.restTemplate.postForEntity(
+                        this.getExchange(alternativeQuote) + "/" + this.API_KEY + "/order",
+                        alternativeOrder, String.class
+                    );
+                } else {
+                    response = this.restTemplate.postForEntity(
+                        this.getExchange(orderRequest) + "/" + this.API_KEY + "/order",
+                        order, String.class
+                    );
+                }
+                break;
+            case BUY:
+                if (alternativeOrder.getPrice() < order.getPrice()) {
+                    response = this.restTemplate.postForEntity(
+                        this.getExchange(alternativeQuote) + "/" + this.API_KEY + "/order",
+                        alternativeOrder, String.class
+                    );
+                } else {
+                    response = this.restTemplate.postForEntity(
+                        this.getExchange(orderRequest), 
+                        order, String.class);
+                }
+                break;
+            default:
+                throw new InvalidOrderException("Invalid side");
+        }
+
+        return response;
+        // if (order.getSide().equals(Side.SELL)) {
+            // System.out.println("selling...");
+            // if (alternativeOrder.getPrice() > order.getPrice()) {
+            //     System.out.println("using alt order...");
+            //     if (alternativeQuote.getExchange().equals("exchange1")) {
+            //         System.out.println("ex1");
+            //         response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
+            //     }
+            //     else if (alternativeQuote.getExchange().equals("exchange2")) {
+            //         System.out.println("ex2");
+            //         response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
+            //     }
+            // } else {
+            //     System.out.println("using original order...");
+            //     if (alternativeQuote.getExchange().equals("exchange1")) {
+            //         System.out.println("ex1");
+            //         response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", order, String.class);
+            //     }
+            //     else if (alternativeQuote.getExchange().equals("exchange2")) {
+            //         System.out.println("ex2");
+            //         response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", order, String.class);
+            //     }
+            // }
+        // } else {
+        //     System.out.println("buying...");
+        //     if (alternativeOrder.getPrice() < order.getPrice()) {
+        //         System.out.println("using alt order...");
+        //         if (alternativeQuote.getExchange().equals("exchange1")) {
+        //             System.out.println("ex1");
+        //             System.out.println(alternativeOrder);
+        //             response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
+        //         }
+        //         else if (alternativeQuote.getExchange().equals("exchange2")) {
+        //             System.out.println("ex2");
+        //             response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", alternativeOrder, String.class);
+        //         }
+        //     } else {
+        //         System.out.println("using original order...");
+        //         if (alternativeQuote.getExchange().equals("exchange1")) {
+        //             System.out.println("ex1");
+        //             response = restTemplate.postForEntity(this.exchange + "/" + this.API_KEY + "/order", order, String.class);
+        //         }
+        //         else if (alternativeQuote.getExchange().equals("exchange2")) {
+        //             System.out.println("ex2");
+        //             response = restTemplate.postForEntity(this.exchange2 + "/" + this.API_KEY + "/order", order, String.class);
+        //         }
+        //     }
+        // }
+    }
+
+    public String getExchange(MarketQuote alternativeQuote) {
+        String response = "";
+        switch (alternativeQuote.getExchange()) {
+            case "exchange1":
+                response = this.exchange;
+                break;
+            case "exchange2":
+                response = this.exchange2;
+                break;
+            default:
+            throw new InvalidOrderException("Invalid exchange");
+        }
+
+        return response;
+    }
+
+    public String getExchange(OrderRequest orderRequest) {
+        String response = "";
+        switch (orderRequest.getExchange()) {
+            case "exchange1":
+                response = this.exchange;
+                break;
+            case "exchange2":
+                response = this.exchange2;
+                break;
+            default:
+            throw new InvalidOrderException("Invalid exchange");
+        }
+
+        return response;
+    }
+
     public void getMarketData() {
         this.md.put(
             "exchange1", List.of(
-                new MarketData(1.0, 3, 16.0, 11.0, 11, "MSFT", 1),
-                new MarketData(2.0, 1, 1.0, 10.0, 13, "AAPL", 1),
-                new MarketData(3.0, 2, 19.0, 14.1, 1, "TSLA", 1)
+                new MarketData(1.0, 3, 1.0, 1.2, 11, "MSFT", 1),
+                new MarketData(2.0, 1, 1.1, 1.1, 13, "AAPL", 1),
+                new MarketData(3.0, 2, 1.2, 1.0, 1, "TSLA", 1)
             )
         );
 
         this.md.put(
             "exchange2", List.of(
-                new MarketData(1.0, 3, 16.5, 41.0, 11, "MSFT", 1),
-                new MarketData(2.0, 1, 1.0, 10.0, 13, "TSLA", 1),
-                new MarketData(3.0, 2, 19.1, 14.0, 1, "AAPL", 1)
+                new MarketData(1.0, 3, 1.0, 1.2, 11, "MSFT", 1),
+                new MarketData(2.0, 1, 1.1, 1.1, 13, "TSLA", 1),
+                new MarketData(3.0, 2, 1.2, 1.0, 1, "AAPL", 1)
             )
         );
     }
