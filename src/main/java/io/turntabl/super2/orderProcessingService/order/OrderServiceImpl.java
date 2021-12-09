@@ -12,12 +12,17 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@EnableScheduling
 @Service
 public class OrderServiceImpl implements OrderService {
 
@@ -35,6 +40,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     MarketDataRepository marketDataRepository;
+
+    @Autowired
+    SimpMessagingTemplate simpMessagingTemplate;
 
     private final OrderRepository orderRepository;
 
@@ -224,6 +232,13 @@ public class OrderServiceImpl implements OrderService {
         this.md.put(ex1.getId(), ex1.getMarketData());
         this.md.put(ex2.getId(), ex2.getMarketData());
     }
+
+    @Scheduled(fixedRate = 3000)
+    public void sendMessage() {
+        String time = new SimpleDateFormat("mm:ss").format(new Date());
+        this.simpMessagingTemplate.convertAndSend("/topic/pushmessages", Map.of("message", time));
+    }
+
 
     public void getMarketData() {
         this.md.put(
