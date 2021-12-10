@@ -1,4 +1,4 @@
-package io.turntabl.super2.orderProcessingService;
+package io.turntabl.super_two.order_processing_service;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

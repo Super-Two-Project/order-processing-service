@@ -8,10 +8,10 @@
 		<version>2.6.1</version>
 		<relativePath/> <!-- lookup parent from repository -->
 	</parent>
-	<groupId>io.turntabl.super2</groupId>
-	<artifactId>orderProcessingService</artifactId>
+	<groupId>io.turntabl.super_two</groupId>
+	<artifactId>order_processing_service</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name>orderProcessingService</name>
+	<name>order_processing_service</name>
 	<description>Service to process orders and send them to an exchange</description>
 	<properties>
 		<java.version>11</java.version>
@@ -98,11 +98,18 @@
 			<groupId>io.projectreactor</groupId>
 			<artifactId>reactor-core</artifactId>
 		</dependency>
-<!--		<dependency>-->
-<!--			<groupId>org.springframework</groupId>-->
-<!--			<artifactId>spring-messaging</artifactId>-->
-<!--			<version>5.2.2.RELEASE</version>-->
-<!--		</dependency>-->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-amqp</artifactId>
+			<version>2.5.2</version>
+
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.amqp</groupId>
+			<artifactId>spring-rabbit-test</artifactId>
+			<version>2.3.9</version>
+			<scope>test</scope>
+		</dependency>
 	</dependencies>
 
 	<build>

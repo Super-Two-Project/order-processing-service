@@ -1,4 +1,4 @@
-package io.turntabl.super2.orderProcessingService.market_data;
+package io.turntabl.super_two.order_processing_service.market_data;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

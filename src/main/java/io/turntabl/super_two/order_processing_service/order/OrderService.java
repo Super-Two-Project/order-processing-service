@@ -1,7 +1,7 @@
-package io.turntabl.super2.orderProcessingService.order;
+package io.turntabl.super_two.order_processing_service.order;
 
-import io.turntabl.super2.orderProcessingService.enums.Side;
-import io.turntabl.super2.orderProcessingService.market_data.MarketQuote;
+import io.turntabl.super_two.order_processing_service.enums.Side;
+import io.turntabl.super_two.order_processing_service.market_data.MarketQuote;
 import org.springframework.http.ResponseEntity;
 
 import java.util.List;

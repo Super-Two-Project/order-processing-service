@@ -1,4 +1,4 @@
-package io.turntabl.super2.orderProcessingService.configurations;
+package io.turntabl.super_two.order_processing_service.configuration;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;

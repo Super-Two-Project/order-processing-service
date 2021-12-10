@@ -1,4 +1,4 @@
-package io.turntabl.super2.orderProcessingService.order;
+package io.turntabl.super_two.order_processing_service.order;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

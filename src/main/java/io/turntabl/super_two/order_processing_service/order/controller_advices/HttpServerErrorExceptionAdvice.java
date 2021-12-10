@@ -1,11 +1,10 @@
-package io.turntabl.super2.orderProcessingService.order.controller_advices;
+package io.turntabl.super_two.order_processing_service.order.controller_advices;
 
 import java.util.Map;
 
 import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 
-import org.json.JSONObject;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;

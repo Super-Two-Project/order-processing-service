@@ -1,13 +1,14 @@
-package io.turntabl.super2.orderProcessingService.order;
+package io.turntabl.super_two.order_processing_service.order;
 
-import io.turntabl.super2.orderProcessingService.enums.Side;
-import io.turntabl.super2.orderProcessingService.market_data.ExchangeMarketData;
-import io.turntabl.super2.orderProcessingService.market_data.MarketData;
-import io.turntabl.super2.orderProcessingService.market_data.MarketDataRepository;
-import io.turntabl.super2.orderProcessingService.market_data.MarketQuote;
-import io.turntabl.super2.orderProcessingService.order.exceptions.InvalidOrderException;
-import io.turntabl.super2.orderProcessingService.order.exceptions.OrderNotFoundException;
+import io.turntabl.super_two.order_processing_service.enums.Side;
+import io.turntabl.super_two.order_processing_service.market_data.ExchangeMarketData;
+import io.turntabl.super_two.order_processing_service.market_data.MarketData;
+import io.turntabl.super_two.order_processing_service.market_data.MarketDataRepository;
+import io.turntabl.super_two.order_processing_service.market_data.MarketQuote;
+import io.turntabl.super_two.order_processing_service.order.exceptions.InvalidOrderException;
+import io.turntabl.super_two.order_processing_service.order.exceptions.OrderNotFoundException;
 
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -35,6 +36,10 @@ public class OrderServiceImpl implements OrderService {
     @Value("${app.data.apikey}")
     private String API_KEY;
 
+    private String topicExchangeName = "spring-boot-exchange";
+
+    private String queueName = "spring-boot";
+
     @Autowired
     RestTemplate restTemplate;
 
@@ -43,6 +48,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     SimpMessagingTemplate simpMessagingTemplate;
+
+    @Autowired
+    RabbitTemplate rabbitTemplate;
 
     private final OrderRepository orderRepository;
 
@@ -237,6 +245,12 @@ public class OrderServiceImpl implements OrderService {
     public void sendMessage() {
         String time = new SimpleDateFormat("mm:ss").format(new Date());
         this.simpMessagingTemplate.convertAndSend("/topic/pushmessages", Map.of("message", time));
+    }
+
+    @Scheduled(fixedRate = 5000)
+    public void sendEvent() {
+        String time = new SimpleDateFormat("mm:ss").format(new Date());
+        this.rabbitTemplate.convertAndSend(this.topicExchangeName, "foo.bar.baz", Map.of("message", time));
     }
 
 

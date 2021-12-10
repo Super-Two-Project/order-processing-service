@@ -1,4 +1,4 @@
-package io.turntabl.super2.orderProcessingService.order.exceptions;
+package io.turntabl.super_two.order_processing_service.order.exceptions;
 
 public class OrderNotFoundException extends RuntimeException {
     
