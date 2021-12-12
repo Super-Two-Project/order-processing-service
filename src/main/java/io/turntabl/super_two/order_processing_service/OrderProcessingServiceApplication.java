@@ -18,21 +18,4 @@ public class OrderProcessingServiceApplication {
 	public RestTemplate restTemplate(RestTemplateBuilder builder) {
 		return builder.build();
 	}
-
-//	@Bean
-//	public WebClient webClient() {
-//		return WebClient
-//				.builder()
-//				.build();
-
-
-//				.baseUrl(this.exchange)
-//				.build()
-//				.post()
-//				.uri("/" + this.API_KEY + "/order")
-//				.body(Mono.just(order), Order.class)
-//				.retrieve()
-//				.bodyToMono(String.class)
-//				.subscribe(res -> System.out.println(res));
-//	}
 }

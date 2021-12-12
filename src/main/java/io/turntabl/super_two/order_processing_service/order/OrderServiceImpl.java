@@ -5,8 +5,7 @@ import io.turntabl.super_two.order_processing_service.market_data.ExchangeMarket
 import io.turntabl.super_two.order_processing_service.market_data.MarketData;
 import io.turntabl.super_two.order_processing_service.market_data.MarketDataRepository;
 import io.turntabl.super_two.order_processing_service.market_data.MarketQuote;
-import io.turntabl.super_two.order_processing_service.order.exceptions.InvalidOrderException;
-import io.turntabl.super_two.order_processing_service.order.exceptions.OrderNotFoundException;
+import io.turntabl.super_two.order_processing_service.order.exception.*;
 
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,7 +27,7 @@ import java.util.stream.Collectors;
 public class OrderServiceImpl implements OrderService {
 
     @Value("${app.data.exchange.url}")
-    private String exchange;
+    private String exchange1;
 
     @Value("${app.data.exchange2.url}")
     private String exchange2;
@@ -72,8 +71,9 @@ public class OrderServiceImpl implements OrderService {
                 .collect(Collectors.toList());
     }
 
+    // Creates an order and sends it to an exchange
     @Override
-    public ResponseEntity<?> createOrder(OrderRequest orderRequest) {
+    public ResponseEntity<String> createOrder(OrderRequest orderRequest) {
         // Create empty order object
         Order order = new Order(orderRequest);
 
@@ -121,6 +121,7 @@ public class OrderServiceImpl implements OrderService {
         this.orderRepository.deleteById(id);
     }
 
+    // Gets the best price from the market data based on the side
     public MarketQuote getBestPrice(Side side, String ticker) {
         List<MarketQuote> tempContainer = new ArrayList<>();
 
@@ -128,7 +129,7 @@ public class OrderServiceImpl implements OrderService {
         this.getExchangeMarketData();
 
         // Get keys of datastore
-        var keys = md.keySet();
+        Set<String> keys = md.keySet();
 
         // Loop through keys
         for (String key: keys) {
@@ -137,7 +138,7 @@ public class OrderServiceImpl implements OrderService {
                 potentialBestOffer = md.get(key).stream()
                         .filter(marketData -> marketData.getTicker().equals(ticker))
                         .findFirst()
-                        .orElseThrow(RuntimeException::new);
+                        .orElseThrow(() -> new ProductDoesNotExist(ticker));
 
                 tempContainer.add(new MarketQuote(key, potentialBestOffer.getBidPrice(), potentialBestOffer.getSellLimit())
                 );
@@ -145,7 +146,7 @@ public class OrderServiceImpl implements OrderService {
                 potentialBestOffer = md.get(key).stream()
                         .filter(marketData -> marketData.getTicker().equals(ticker))
                         .findFirst()
-                        .orElseThrow(RuntimeException::new);
+                        .orElseThrow(() -> new ProductDoesNotExist(ticker));
 
                 tempContainer.add(new MarketQuote(key, potentialBestOffer.getAskPrice(), potentialBestOffer.getBuyLimit())
                 );
@@ -155,16 +156,17 @@ public class OrderServiceImpl implements OrderService {
         if (side.equals(Side.SELL)) {
             return tempContainer.stream()
                     .max(Comparator.comparingDouble(MarketQuote::getPrice))
-                    .orElseThrow(RuntimeException::new);
+                    .orElseThrow(() -> new PriceException("Error finding maximum selling price of product"));
         } else {
             return tempContainer.stream()
                     .min(Comparator.comparingDouble(MarketQuote::getPrice))
-                    .orElseThrow(RuntimeException::new);
+                    .orElseThrow(() -> new PriceException("Error finding minimum buying price of product"));
         }
     }
 
+    // Sends order to an exchange to be executed
     public ResponseEntity<String> sendOrderToExchange(Side side, OrderRequest orderRequest, MarketQuote alternativeQuote, Order alternativeOrder, Order order) {
-        ResponseEntity<String> response = null;
+        ResponseEntity<String> response;
         switch (side) {
             case SELL:
                 if (alternativeOrder.getPrice() > order.getPrice()) {
@@ -187,7 +189,7 @@ public class OrderServiceImpl implements OrderService {
                     );
                 } else {
                     response = this.restTemplate.postForEntity(
-                        this.getExchange(orderRequest), 
+                        this.getExchange(orderRequest) + "/" + this.API_KEY + "/order",
                         order, String.class);
                 }
                 break;
@@ -198,11 +200,12 @@ public class OrderServiceImpl implements OrderService {
         return response;
     }
 
+    // Returns the exchange url for a given exchange
     public String getExchange(MarketQuote alternativeQuote) {
-        String response = "";
+        String response;
         switch (alternativeQuote.getExchange()) {
             case "exchange1":
-                response = this.exchange;
+                response = this.exchange1;
                 break;
             case "exchange2":
                 response = this.exchange2;
@@ -214,11 +217,12 @@ public class OrderServiceImpl implements OrderService {
         return response;
     }
 
+    // Returns the exchange url for a given exchange
     public String getExchange(OrderRequest orderRequest) {
-        String response = "";
+        String response;
         switch (orderRequest.getExchange()) {
             case "exchange1":
-                response = this.exchange;
+                response = this.exchange1;
                 break;
             case "exchange2":
                 response = this.exchange2;
@@ -230,23 +234,29 @@ public class OrderServiceImpl implements OrderService {
         return response;
     }
 
+    // Gets market data from redis cache and places them in local map
     public void getExchangeMarketData() {
+        // Get market data from exchange 1
         ExchangeMarketData ex1 = this.marketDataRepository.findById("exchange1")
-                .orElseThrow(RuntimeException::new);
+                .orElseThrow(() -> new MarketDataException("Market data for not available"));
 
+        // Get market data from exchange 2
         ExchangeMarketData ex2 = this.marketDataRepository.findById("exchange2")
-                .orElseThrow(RuntimeException::new);
+                .orElseThrow(() -> new MarketDataException("Market data for not available"));
 
+        // Put data into local map
         this.md.put(ex1.getId(), ex1.getMarketData());
         this.md.put(ex2.getId(), ex2.getMarketData());
     }
 
+    // Sends live updates to frontend over websockets
     @Scheduled(fixedRate = 3000)
     public void sendMessage() {
         String time = new SimpleDateFormat("mm:ss").format(new Date());
         this.simpMessagingTemplate.convertAndSend("/topic/pushmessages", Map.of("message", time));
     }
 
+    // Sends messages into a queue
     @Scheduled(fixedRate = 5000)
     public void sendEvent() {
         String time = new SimpleDateFormat("mm:ss").format(new Date());
@@ -254,6 +264,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
 
+    // Mock market data
     public void getMarketData() {
         this.md.put(
             "exchange1", List.of(

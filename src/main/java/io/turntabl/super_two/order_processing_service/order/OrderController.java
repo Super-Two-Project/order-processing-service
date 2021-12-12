@@ -20,6 +20,7 @@ public class OrderController {
     @Autowired
     OrderService orderService;
 
+    // Get the best price (ask/bid) on the market for a given ticker and side
     @RequestMapping(value = "/orders/best-price", produces = "application/json")
     public ResponseEntity<MarketQuote> getBestPrice(@RequestParam String ticker, @RequestParam Side side) {
         return new ResponseEntity<>(this.orderService.getPrice(ticker, side), HttpStatus.OK);
@@ -27,7 +28,6 @@ public class OrderController {
 
     @GetMapping("/emitter")
     public SseEmitter eventEmitter() {
-//        SseEmitter emitter = new SseEmitter(12000L); //12000 here is the timeout and it is optional
         SseEmitter emitter = new SseEmitter();
 
         //create a single thread for sending messages asynchronously
@@ -48,27 +48,31 @@ public class OrderController {
         return emitter;
     }
 
+    // Get all orders
     @GetMapping("/orders")
     public List<OrderResponse> getOrders() {
         return this.orderService.getOrders();
     }
 
+    // Create an order
     @PostMapping("/orders")
     public ResponseEntity<?> createOrder(@RequestBody OrderRequest orderRequest) {
         return this.orderService.createOrder(orderRequest);
     }
 
-    // Single item
+    // Get an order
     @GetMapping("/orders/{id}")
     public ResponseEntity<OrderResponse> getOrder(@PathVariable Long id) {
         return this.orderService.getOrder(id);
     }
 
+    // Update an order
     @PutMapping("/orders/{id}")
     public ResponseEntity<OrderResponse> updateOrder(@RequestBody OrderRequest orderRequest, @PathVariable Long id) {
         return this.orderService.updateOrder(orderRequest, id);
     }
 
+    // Delete an order
     @DeleteMapping("/orders/{id}")
     public void deleteOrder(@PathVariable Long id) {
         this.orderService.deleteOrder(id);

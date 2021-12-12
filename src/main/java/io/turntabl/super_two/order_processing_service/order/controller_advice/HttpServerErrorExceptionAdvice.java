@@ -1,4 +1,4 @@
-package io.turntabl.super_two.order_processing_service.order.controller_advices;
+package io.turntabl.super_two.order_processing_service.order.controller_advice;
 
 import java.util.Map;
 
